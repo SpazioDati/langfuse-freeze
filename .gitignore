@@ -1,1 +1,29 @@
-*.idea
+.mypy_cache/
+.dmypy.json
+/.coverage
+/.coverage.*
+/.nox/
+/.python-version
+/.pytype/
+/dist/
+/docs/_build/
+*.egg-info/
+__pycache__/
+.vscode
+.idea
+.pytest_cache
+htmlcov
+coverage.xml
+artifacts
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# MacOS files
+.DS_Store
+/docs
+.claude
+/.venv
+.env

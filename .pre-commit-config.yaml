@@ -1,0 +1,45 @@
+exclude: ^(langfuse_freeze\.egg-info/|\.venv/|\.mypy_cache/|\.git/|.*__pycache__/)
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.0.1
+  hooks:
+  - id: check-added-large-files
+  - id: check-toml
+  - id: check-yaml
+    args:
+    - --unsafe
+  - id: end-of-file-fixer
+  - id: trailing-whitespace
+    entry: trailing-whitespace-fixer
+
+  # Prevent committing inline conflict markers
+  - id: check-merge-conflict
+    args: [--assume-in-merge]
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  # Ruff version.
+  rev: v0.14.2
+  hooks:
+  - id: ruff-check
+    args: [--fix]
+  - id: ruff-format
+- repo: https://github.com/gitleaks/gitleaks
+  rev: v8.28.0
+  hooks:
+  - id: gitleaks
+- repo: local
+  hooks:
+  - id: mypy
+    name: mypy
+    entry: uv run dmypy run .
+    language: system
+    files: ".*\\.py"
+    exclude: "py-stubs"
+    # without this option, when run with `pre-commit run -a`, it would run N mypy, each with
+    # ~100 python files
+    pass_filenames: false
+    types: [python]
+- repo: https://github.com/google/yamlfmt
+  rev: v0.20.0
+  hooks:
+  - id: yamlfmt
+    args: [-debug, paths, -lint]

@@ -1,0 +1,108 @@
+[project]
+name = "langfuse-freeze"
+version = "0.1.0"
+description = "Langfuse Freeze"
+authors = [
+    {name = "Giacomo Berardi", email = "berardi@spaziodati.eu"},
+    {name = "Gabriele Ghisleni", email = "gabriele.ghisleni@spaziodati.eu"}
+]
+license = "LicenseRef-Proprietary"
+readme = "README.md"
+requires-python = "~= 3.13.9 "
+
+dependencies = [
+    "langfuse>=2.0.0,<3.0.0",
+]
+
+[dependency-groups]
+dev = [
+    # Test
+    "pytest>=8.1.1,<9.0.0",
+    "coverage[toml]>=7.4.4,<8.0.0",
+    "pytest-cov>=5.0.0,<6.0.0",
+    "pytest-html>=4.1.1,<5.0.0",
+
+    # Lint
+    "pre-commit>=3.7.0,<4.0.0",
+    "pre-commit-hooks>=4.0.1,<5.0.0",
+    "mypy==1.10.0",
+    "ruff~=0.14.2"
+]
+
+[project.scripts]
+langfuse-freeze-bootstrap = "langfuse_freeze.cli:main"
+
+[tool.uv]
+keyring-provider = "subprocess"
+package = true
+
+[[tool.uv.index]]
+name = "spaziodati"
+url = "https://spaziopypi@casolin.spaziodati.eu/repository/pypi/simple/"
+# casolin being first causes public package search to fail if its credentials are missing, even when not needed
+ignore-error-codes = [401]
+
+
+
+[tool.coverage.run]
+branch = true
+source = ["."]
+omit = [
+    ".venv/*",
+    "*virtualenvs*",
+    "*/protos/*",
+    "*/tests/*"
+]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 80
+
+[tool.mypy]
+strict = true
+warn_return_any = false
+disallow_subclassing_any = false
+disallow_untyped_decorators = false
+disallow_any_generics = false
+# DEFAULT behaviour: don't force type hinting but check what's hinted is valid
+disallow_untyped_calls = false
+disallow_incomplete_defs = false
+disallow_untyped_defs = false
+
+strict_optional = true
+no_implicit_optional = true
+warn_unreachable = true
+namespace_packages = true
+
+# for compatibility between mypy and dmypy
+local_partial_types = true
+
+pretty = true
+show_column_numbers = true
+show_error_codes = true
+show_error_context = true
+
+# we store (partial) stubs of some dependencies in py-stubs; we want to exclude such folder from mypy, otherwise
+# it will check types in there (and will most likely complain), but we want to read it for when looking for stubs
+mypy_path = "py_stubs"
+exclude = ["py_stubs", "tests"]
+
+# fully typed
+[[tool.mypy.overrides]]
+# add here modules that you want to be fully typed
+module = []
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+ignore_missing_imports = true
+[[tool.mypy.overrides]]
+# add here modules for which you did not find stubs
+module = ["langfuse", "langfuse.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers"
+testpaths = "tests"
+markers = [
+    "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+]
