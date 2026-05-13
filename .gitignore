@@ -27,3 +27,4 @@ __pycache__/
 .claude
 /.venv
 .env
+*.json

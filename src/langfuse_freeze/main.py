@@ -26,7 +26,9 @@ class LangfuseBacked(Langfuse):
         self._prompts_backup: dict = {}
         try:
             with open(self.PROMPTS_BACKUP_PATH) as f:
-                self._prompts_backup = json.load(f)
+                prompts_backup = json.load(f)
+
+            self._prompts_backup = self._normalize_backup(prompts_backup)
             logger.info("Loaded %d prompts from backup", len(self._prompts_backup))
         except FileNotFoundError:
             logger.warning("No prompts backup found at %s", self.PROMPTS_BACKUP_PATH)
@@ -130,6 +132,31 @@ class LangfuseBacked(Langfuse):
             page += 1
 
         return prompts_backup
+
+    @staticmethod
+    def _normalize_chat_message(msg: dict) -> dict:
+        """Normalize chat messages for langfuse v3/v4 compatibility.
+        v3 used type='message'; v4 uses 'chatmessage' or 'placeholder'.
+        """
+        if "name" in msg and "role" not in msg and "content" not in msg:
+            msg["type"] = "placeholder"
+
+        elif "role" in msg and "content" in msg:
+            msg["type"] = "chatmessage"
+
+        return msg
+
+    @classmethod
+    def _normalize_backup(cls, backup: dict) -> dict:
+        """Normalize legacy v3 backups to v4 schema."""
+        for _name, entry in backup.items():
+            if not isinstance(entry, dict) or entry.get("type") != "chat":
+                continue
+            labels = entry.get("labels", {})
+            for label, prompt in labels.items():
+                if isinstance(prompt, list):
+                    labels[label] = [cls._normalize_chat_message(m) for m in prompt]
+        return backup
 
     @classmethod
     def _write_backup(cls, prompts: dict) -> None:

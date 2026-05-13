@@ -74,7 +74,7 @@ def test_get_prompt_injects_chat_fallback_production(backup_file):
     with patch("langfuse_freeze.main.Langfuse.get_prompt") as mock_super:
         client.get_prompt("chat-prompt", type="chat")
         _, kwargs = mock_super.call_args
-        assert kwargs["fallback"] == [{"role": "system", "content": "You are a bot."}]
+        assert kwargs["fallback"] == [{"role": "system", "content": "You are a bot.", "type": "chatmessage"}]
 
 
 def test_get_prompt_injects_chat_fallback_specific_label(backup_file):
@@ -83,7 +83,7 @@ def test_get_prompt_injects_chat_fallback_specific_label(backup_file):
     with patch("langfuse_freeze.main.Langfuse.get_prompt") as mock_super:
         client.get_prompt("chat-prompt", type="chat", label="dev")
         _, kwargs = mock_super.call_args
-        assert kwargs["fallback"] == [{"role": "system", "content": "You are a dev bot."}]
+        assert kwargs["fallback"] == [{"role": "system", "content": "You are a dev bot.", "type": "chatmessage"}]
 
 
 def test_get_prompt_falls_back_to_production_for_unknown_label(backup_file):
