@@ -1,6 +1,6 @@
 [project]
 name = "langfuse-freeze"
-version = "0.1.0"
+version = "0.1.1"
 description = "Langfuse Freeze"
 authors = [
     {name = "Giacomo Berardi", email = "berardi@spaziodati.eu"},
