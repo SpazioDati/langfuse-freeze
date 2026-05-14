@@ -1,14 +1,14 @@
 [project]
 name = "langfuse-freeze"
 version = "0.1.1"
-description = "Langfuse Freeze"
+description = "Freeze Langfuse prompts into static artifacts for offline production deployments"
 authors = [
     {name = "Giacomo Berardi", email = "berardi@spaziodati.eu"},
     {name = "Gabriele Ghisleni", email = "gabriele.ghisleni@spaziodati.eu"}
 ]
-license = "LicenseRef-Proprietary"
+license = "MIT"
 readme = "README.md"
-requires-python = "~= 3.13.9 "
+requires-python = ">= 3.11, < 4"
 
 dependencies = [
     "langfuse>=2.0.0,<3.0.0",
@@ -35,14 +35,6 @@ langfuse-freeze-bootstrap = "langfuse_freeze.cli:main"
 [tool.uv]
 keyring-provider = "subprocess"
 package = true
-
-[[tool.uv.index]]
-name = "spaziodati"
-url = "https://spaziopypi@casolin.spaziodati.eu/repository/pypi/simple/"
-# casolin being first causes public package search to fail if its credentials are missing, even when not needed
-ignore-error-codes = [401]
-
-
 
 [tool.coverage.run]
 branch = true
