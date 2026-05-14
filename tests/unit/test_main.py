@@ -4,15 +4,6 @@ from unittest.mock import patch
 
 from tests.conftest import _make_client
 
-# def test_get_prompt_injects_correct_fallback(backup_file, cassette):
-#     client = _make_client(backup_file)
-#     with patch("langfuse_freeze.main.Langfuse.get_prompt") as mock_super:
-#         for name, label_data in cassette["prompts"].items():
-#             for label, data in label_data.items():
-#                 client.get_prompt(name, type=data["type"], label=label)
-#                 _, kwargs = mock_super.call_args
-#                 assert kwargs["fallback"] == data["prompt"]
-
 
 def test_init_handles_missing_backup(tmp_path):
     client = _make_client(str(tmp_path / "nonexistent.json"))
