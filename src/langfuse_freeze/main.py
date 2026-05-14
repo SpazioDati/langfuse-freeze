@@ -28,13 +28,23 @@ class LangfuseBacked(Langfuse):
         try:
             with open(self.PROMPTS_BACKUP_PATH) as f:
                 prompts_backup = json.load(f)
-
             self._prompts_backup = self._normalize_backup(prompts_backup)
             logger.info("Loaded %d prompts from backup", len(self._prompts_backup))
-        except FileNotFoundError:
-            logger.warning("No prompts backup found at %s", self.PROMPTS_BACKUP_PATH)
-        except Exception:
-            logger.exception("Failed to load prompts backup")
+
+        except FileNotFoundError as e:
+            msg = (
+                f"No prompts backup found at {self.PROMPTS_BACKUP_PATH}. "
+                + "Run LangfuseBacked.bootstrap() first or ensure the backup file exists "
+                + "by removing 'LANGFUSE_DISABLE_BOOTSTRAP' from env vars."
+            )
+
+            raise RuntimeError(msg) from e
+
+        except json.JSONDecodeError as e:
+            raise RuntimeError(f"Prompts backup at {self.PROMPTS_BACKUP_PATH} contains invalid JSON: {e}") from e
+
+        except Exception as e:
+            raise RuntimeError(f"Failed to load prompts backup from {self.PROMPTS_BACKUP_PATH}: {e}") from e
 
     def _get_fallback(self, name: str, label: str | None):
         entry = self._prompts_backup.get(name)

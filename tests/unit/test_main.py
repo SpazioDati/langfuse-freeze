@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+import pytest
+
 from tests.conftest import _make_client
 
 
 def test_init_handles_missing_backup(tmp_path):
-    client = _make_client(str(tmp_path / "nonexistent.json"))
-    assert client._prompts_backup == {}
+    with pytest.raises(RuntimeError):
+        _make_client(str(tmp_path / "nonexistent.json"))
 
 
 def test_get_prompt_injects_text_fallback_production(backup_file):
