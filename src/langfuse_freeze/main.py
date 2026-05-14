@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Literal, overload
 from langfuse import Langfuse
 
 if TYPE_CHECKING:
+    from langfuse.api import PromptMeta
     from langfuse.model import ChatMessageDict, ChatPromptClient, PromptClient, TextPromptClient
 
 logger = logging.getLogger(__name__)
@@ -116,13 +117,14 @@ class LangfuseBacked(Langfuse):
         page = 1
 
         while True:
-            response = langfuse.api.prompts.list(page=page)
-            if not response.data:
+            prompts_metadata = cls._load_prompt_metadata_response_page(langfuse, page)
+            if not prompts_metadata:
                 break
-            for prompt_meta in response.data:
+
+            for prompt_meta in prompts_metadata:
                 labels = {}
                 for label in prompt_meta.labels:
-                    prompt = langfuse.get_prompt(prompt_meta.name, label=label, type=prompt_meta.type)
+                    prompt = cls._fetch_prompt(langfuse, prompt_meta, label)
                     labels[label] = prompt.prompt
 
                 prompts_backup[prompt_meta.name] = {
@@ -132,6 +134,14 @@ class LangfuseBacked(Langfuse):
             page += 1
 
         return prompts_backup
+
+    @staticmethod
+    def _load_prompt_metadata_response_page(langfuse: Langfuse, page: int) -> list[PromptMeta]:
+        return langfuse.api.prompts.list(page=page).data
+
+    @staticmethod
+    def _fetch_prompt(langfuse: Langfuse, prompt_meta: PromptMeta, label: str):
+        return langfuse.get_prompt(name=prompt_meta.name, label=label, type=prompt_meta.type.name)
 
     @staticmethod
     def _normalize_chat_message(msg: dict) -> dict:
