@@ -1,25 +1,29 @@
 name: Tests
-
 on:
   push:
   pull_request:
 
 jobs:
-  test:
+  lint:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    - uses: astral-sh/setup-uv@v5
+    - run: uv sync
+    - run: uv run ruff check src/ tests/
 
-    - name: Install uv
-      uses: astral-sh/setup-uv@v5
-
-    - name: Install dependencies
-      run: uv sync
-
-    - name: Lint
-      run: uv run ruff check src/ tests/
-
-    - name: Unit tests
-      run: uv run pytest tests/ -m "not integration"
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        langfuse-version: ["3", "4"]
+    name: Tests (langfuse v${{ matrix.langfuse-version }})
+    steps:
+    - uses: actions/checkout@v4
+    - uses: astral-sh/setup-uv@v5
+    - run: uv sync
+    - run: uv pip install --upgrade "langfuse~=${{ matrix.langfuse-version }}.0"
+    - run: uv run pytest tests/ -m "not integration"
       env:
         LANGFUSE_DISABLE_BOOTSTRAP: "1"

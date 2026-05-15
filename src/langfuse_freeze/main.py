@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Literal, overload
 from langfuse import Langfuse
 
 if TYPE_CHECKING:
+    from langfuse.api import PromptMeta
     from langfuse.model import ChatMessageDict, ChatPromptClient, PromptClient, TextPromptClient
 
 logger = logging.getLogger(__name__)
@@ -26,12 +27,24 @@ class LangfuseBacked(Langfuse):
         self._prompts_backup: dict = {}
         try:
             with open(self.PROMPTS_BACKUP_PATH) as f:
-                self._prompts_backup = json.load(f)
+                prompts_backup = json.load(f)
+            self._prompts_backup = self._normalize_backup(prompts_backup)
             logger.info("Loaded %d prompts from backup", len(self._prompts_backup))
-        except FileNotFoundError:
-            logger.warning("No prompts backup found at %s", self.PROMPTS_BACKUP_PATH)
-        except Exception:
-            logger.exception("Failed to load prompts backup")
+
+        except FileNotFoundError as e:
+            msg = (
+                f"No prompts backup found at {self.PROMPTS_BACKUP_PATH}. "
+                + "Run LangfuseBacked.bootstrap() first or ensure the backup file exists "
+                + "by removing 'LANGFUSE_DISABLE_BOOTSTRAP' from env vars."
+            )
+
+            raise RuntimeError(msg) from e
+
+        except json.JSONDecodeError as e:
+            raise RuntimeError(f"Prompts backup at {self.PROMPTS_BACKUP_PATH} contains invalid JSON: {e}") from e
+
+        except Exception as e:
+            raise RuntimeError(f"Failed to load prompts backup from {self.PROMPTS_BACKUP_PATH}: {e}") from e
 
     def _get_fallback(self, name: str, label: str | None):
         entry = self._prompts_backup.get(name)
@@ -114,13 +127,14 @@ class LangfuseBacked(Langfuse):
         page = 1
 
         while True:
-            response = langfuse.api.prompts.list(page=page)
-            if not response.data:
+            prompts_metadata = cls._load_prompt_metadata_response_page(langfuse, page)
+            if not prompts_metadata:
                 break
-            for prompt_meta in response.data:
+
+            for prompt_meta in prompts_metadata:
                 labels = {}
                 for label in prompt_meta.labels:
-                    prompt = langfuse.get_prompt(prompt_meta.name, label=label, type=prompt_meta.type)
+                    prompt = cls._fetch_prompt(langfuse, prompt_meta, label)
                     labels[label] = prompt.prompt
 
                 prompts_backup[prompt_meta.name] = {
@@ -130,6 +144,39 @@ class LangfuseBacked(Langfuse):
             page += 1
 
         return prompts_backup
+
+    @staticmethod
+    def _load_prompt_metadata_response_page(langfuse: Langfuse, page: int) -> list[PromptMeta]:
+        return langfuse.api.prompts.list(page=page).data
+
+    @staticmethod
+    def _fetch_prompt(langfuse: Langfuse, prompt_meta: PromptMeta, label: str):
+        return langfuse.get_prompt(name=prompt_meta.name, label=label, type=prompt_meta.type.name)
+
+    @staticmethod
+    def _normalize_chat_message(msg: dict) -> dict:
+        """Normalize chat messages for langfuse v3/v4 compatibility.
+        v3 used type='message'; v4 uses 'chatmessage' or 'placeholder'.
+        """
+        if "name" in msg and "role" not in msg and "content" not in msg:
+            msg["type"] = "placeholder"
+
+        elif "role" in msg and "content" in msg:
+            msg["type"] = "chatmessage"
+
+        return msg
+
+    @classmethod
+    def _normalize_backup(cls, backup: dict) -> dict:
+        """Normalize legacy v3 backups to v4 schema."""
+        for _name, entry in backup.items():
+            if not isinstance(entry, dict) or entry.get("type") != "chat":
+                continue
+            labels = entry.get("labels", {})
+            for label, prompt in labels.items():
+                if isinstance(prompt, list):
+                    labels[label] = [cls._normalize_chat_message(m) for m in prompt]
+        return backup
 
     @classmethod
     def _write_backup(cls, prompts: dict) -> None:
