@@ -27,3 +27,5 @@ __pycache__/
 .claude
 /.venv
 .env
+*.json
+!prompts_cassette.json

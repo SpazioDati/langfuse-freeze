@@ -1,6 +1,6 @@
 [project]
 name = "langfuse-freeze"
-version = "0.1.1"
+version = "0.1.2"
 description = "Freeze Langfuse prompts into static artifacts for offline production deployments"
 authors = [
     {name = "Giacomo Berardi", email = "berardi@spaziodati.eu"},
@@ -11,7 +11,7 @@ readme = "README.md"
 requires-python = ">= 3.11, < 4"
 
 dependencies = [
-    "langfuse>=2.0.0,<3.0.0",
+    "langfuse>=3.0.0,<5.0.0",
 ]
 
 [dependency-groups]
