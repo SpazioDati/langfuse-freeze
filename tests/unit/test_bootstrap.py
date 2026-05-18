@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-from langfuse_freeze.main import FrozenLangfuse
+from langfuse_freeze import FrozenLangfuse
 
 
 @pytest.fixture(autouse=True)
@@ -30,7 +30,7 @@ def test_bootstrap_skips_if_backup_exists(isolated_backup_path, caplog):
         json.dump({}, f)
 
     with (
-        caplog.at_level(logging.INFO, logger="langfuse_freeze.main"),
+        caplog.at_level(logging.INFO, logger="langfuse_freeze.client"),
         patch.object(FrozenLangfuse, "_fetch_all_prompts") as mock_fetch,
     ):
         FrozenLangfuse.bootstrap()
@@ -52,10 +52,10 @@ def test_bootstrap_fetches_if_backup_missing(isolated_backup_path, langfuse_env)
 
 
 def test_bootstrap_retries_on_failure(isolated_backup_path, langfuse_env, monkeypatch):
-    import langfuse_freeze.main as main_module
+    import langfuse_freeze.client as client_module
 
-    monkeypatch.setattr(main_module, "_MAX_RETRIES", 3)
-    monkeypatch.setattr(main_module, "_RETRY_DELAY", 0)
+    monkeypatch.setattr(client_module, "_MAX_RETRIES", 3)
+    monkeypatch.setattr(client_module, "_RETRY_DELAY", 0)
 
     fake_prompts = {"p": {"type": "text", "labels": {"production": "x"}}}
     call_count = 0
@@ -75,10 +75,10 @@ def test_bootstrap_retries_on_failure(isolated_backup_path, langfuse_env, monkey
 
 
 def test_bootstrap_raises_after_max_retries(isolated_backup_path, langfuse_env, monkeypatch):
-    import langfuse_freeze.main as main_module
+    import langfuse_freeze.client as client_module
 
-    monkeypatch.setattr(main_module, "_MAX_RETRIES", 3)
-    monkeypatch.setattr(main_module, "_RETRY_DELAY", 0)
+    monkeypatch.setattr(client_module, "_MAX_RETRIES", 3)
+    monkeypatch.setattr(client_module, "_RETRY_DELAY", 0)
 
     with (
         patch.object(FrozenLangfuse, "_fetch_all_prompts", side_effect=ConnectionError("down")),

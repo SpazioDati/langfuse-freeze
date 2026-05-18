@@ -6,7 +6,7 @@ import os
 
 import pytest
 
-from langfuse_freeze.main import FrozenLangfuse
+from langfuse_freeze import FrozenLangfuse
 
 LANGFUSE_HOST = "http://localhost:3030"
 

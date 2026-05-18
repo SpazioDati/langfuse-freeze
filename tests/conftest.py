@@ -15,11 +15,11 @@ CASSETTE_PATH = Path(__file__).parent / "resources" / "prompts_cassette.json.gz"
 
 
 def _make_client(backup_path):
-    from langfuse_freeze.main import FrozenLangfuse
+    from langfuse_freeze import FrozenLangfuse
 
     client = FrozenLangfuse.__new__(FrozenLangfuse)
     client.PROMPTS_BACKUP_PATH = backup_path
-    with patch("langfuse_freeze.main.Langfuse.__init__", return_value=None):
+    with patch("langfuse_freeze.client.Langfuse.__init__", return_value=None):
         FrozenLangfuse.__init__(client)
     return client
 

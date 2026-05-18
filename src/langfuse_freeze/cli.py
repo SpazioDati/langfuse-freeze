@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.INFO)
 
 os.environ["LANGFUSE_DISABLE_IMPLICIT_BOOTSTRAP"] = "1"
 
-from langfuse_freeze.main import FrozenLangfuse  # noqa: E402
+from langfuse_freeze import FrozenLangfuse  # noqa: E402
 
 
 def main() -> None:

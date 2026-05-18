@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import os
 
-from langfuse_freeze.main import FrozenLangfuse
+from langfuse_freeze.client import FrozenLangfuse
+
+__all__ = ["FrozenLangfuse"]
 
 if not os.environ.get("LANGFUSE_DISABLE_IMPLICIT_BOOTSTRAP"):
     try:

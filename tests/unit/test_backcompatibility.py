@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from langfuse_freeze.main import FrozenLangfuse
+from langfuse_freeze import FrozenLangfuse
 
 
 def test_v3_message_becomes_chatmessage():

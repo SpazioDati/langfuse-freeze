@@ -20,7 +20,7 @@ uv add langfuse-freeze
 ## Usage
 
 ```python
-from langfuse_freeze.main import FrozenLangfuse
+from langfuse_freeze import FrozenLangfuse
 
 client = FrozenLangfuse()
 prompt = client.get_prompt("my-prompt", type="text", label="production")
