@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gzip
 import json
 import logging
 import os
@@ -14,7 +15,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_PROMPTS_BACKUP_PATH = os.environ.get("LANGFUSE_PROMPTS_BACKUP_PATH", "./langfuse-backup/prompts.json")
+_PROMPTS_BACKUP_PATH = os.environ.get("LANGFUSE_PROMPTS_BACKUP_PATH", "./langfuse-backup/prompts.json.gz")
 _MAX_RETRIES = int(os.environ.get("LANGFUSE_BOOTSTRAP_MAX_RETRIES", "3"))
 _RETRY_DELAY = float(os.environ.get("LANGFUSE_BOOTSTRAP_RETRY_DELAY", "2"))
 
@@ -26,7 +27,7 @@ class FrozenLangfuse(Langfuse):
         super().__init__(**kwargs)
         self._prompts_backup: dict = {}
         try:
-            with open(self.PROMPTS_BACKUP_PATH) as f:
+            with gzip.open(self.PROMPTS_BACKUP_PATH, "rt") as f:
                 prompts_backup = json.load(f)
             self._prompts_backup = self._normalize_backup(prompts_backup)
             logger.info("Loaded %d prompts from backup", len(self._prompts_backup))
@@ -181,5 +182,5 @@ class FrozenLangfuse(Langfuse):
     @classmethod
     def _write_backup(cls, prompts: dict) -> None:
         os.makedirs(os.path.dirname(os.path.abspath(cls.PROMPTS_BACKUP_PATH)), exist_ok=True)
-        with open(cls.PROMPTS_BACKUP_PATH, "w") as f:
+        with gzip.open(cls.PROMPTS_BACKUP_PATH, "wt") as f:
             json.dump(prompts, f, indent=2)

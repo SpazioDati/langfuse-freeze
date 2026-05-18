@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gzip
 import json
 import os
 
@@ -29,7 +30,7 @@ def fresh_backup(tmp_path, monkeypatch):
 def test_bootstrap_fetches_and_writes_real_prompts(fresh_backup):
     FrozenLangfuse.bootstrap()
     assert os.path.exists(fresh_backup)
-    with open(fresh_backup) as f:
+    with gzip.open(fresh_backup, "rt") as f:
         data = json.load(f)
 
     assert len(data) > 0
@@ -58,7 +59,7 @@ def test_bootstrap_skips_existing_backup(fresh_backup):
 def test_langfuse_backed_get_text_prompt(fresh_backup, monkeypatch):
     FrozenLangfuse.bootstrap()
 
-    with open(fresh_backup) as f:
+    with gzip.open(fresh_backup, "rt") as f:
         data = json.load(f)
 
     text_prompts = {k: v for k, v in data.items() if v["type"] == "text"}
@@ -81,7 +82,7 @@ def test_langfuse_backed_get_text_prompt(fresh_backup, monkeypatch):
 def test_langfuse_backed_get_chat_prompt(fresh_backup, monkeypatch):
     FrozenLangfuse.bootstrap()
 
-    with open(fresh_backup) as f:
+    with gzip.open(fresh_backup, "rt") as f:
         data = json.load(f)
 
     chat_prompts = {k: v for k, v in data.items() if v["type"] == "chat"}
@@ -104,7 +105,7 @@ def test_langfuse_backed_get_chat_prompt(fresh_backup, monkeypatch):
 def test_fallback_used_when_langfuse_unreachable(fresh_backup):
     FrozenLangfuse.bootstrap()
 
-    with open(fresh_backup) as f:
+    with gzip.open(fresh_backup, "rt") as f:
         data = json.load(f)
 
     if not data:

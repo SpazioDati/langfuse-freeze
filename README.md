@@ -40,15 +40,15 @@ Same logic as import-time bootstrap — skips if backup already present.
 
 ## Configuration
 
-| Env var | Default | Description |
-|---|---|---|
-| `LANGFUSE_PUBLIC_KEY` | — | Required |
-| `LANGFUSE_SECRET_KEY` | — | Required |
-| `LANGFUSE_HOST` | — | Required |
-| `LANGFUSE_PROMPTS_BACKUP_PATH` | `./langfuse-backup/prompts.json` | Backup file location |
-| `LANGFUSE_BOOTSTRAP_MAX_RETRIES` | `3` | Fetch attempts before crash |
-| `LANGFUSE_BOOTSTRAP_RETRY_DELAY` | `2` | Base seconds for exponential backoff |
-| `LANGFUSE_DISABLE_BOOTSTRAP` | — | Set to `1` to skip import-time bootstrap |
+| Env var | Default                             | Description |
+|---|-------------------------------------|---|
+| `LANGFUSE_PUBLIC_KEY` | —                                   | Required |
+| `LANGFUSE_SECRET_KEY` | —                                   | Required |
+| `LANGFUSE_HOST` | —                                   | Required |
+| `LANGFUSE_PROMPTS_BACKUP_PATH` | `./langfuse-backup/prompts.json.gz` | Backup file location |
+| `LANGFUSE_BOOTSTRAP_MAX_RETRIES` | `3`                                 | Fetch attempts before crash |
+| `LANGFUSE_BOOTSTRAP_RETRY_DELAY` | `2`                                 | Base seconds for exponential backoff |
+| `LANGFUSE_DISABLE_BOOTSTRAP` | —                                   | Set to `1` to skip import-time bootstrap |
 
 ## Backup format
 

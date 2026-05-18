@@ -28,4 +28,4 @@ __pycache__/
 /.venv
 .env
 *.json
-!prompts_cassette.json
+!prompts_cassette.json.gz

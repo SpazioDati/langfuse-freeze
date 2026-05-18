@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gzip
 import os
 from unittest.mock import patch
 
@@ -10,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-CASSETTE_PATH = Path(__file__).parent / "resources" / "prompts_cassette.json"
+CASSETTE_PATH = Path(__file__).parent / "resources" / "prompts_cassette.json.gz"
 
 
 def _make_client(backup_path):
@@ -25,7 +26,7 @@ def _make_client(backup_path):
 
 @pytest.fixture
 def cassette():
-    with open(CASSETTE_PATH) as f:
+    with gzip.open(CASSETTE_PATH, "rt") as f:
         return json.load(f)
 
 
@@ -36,6 +37,6 @@ def backup_file(cassette, tmp_path):
         first_label = next(iter(label_data.values()))
         labels = {label: data["prompt"] for label, data in label_data.items()}
         backup[name] = {"type": first_label["type"], "labels": labels}
-    path = tmp_path / "prompts.json"
+    path = tmp_path / "prompts.json.gz"
     path.write_text(json.dumps(backup))
     return str(path)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gzip
 import json
 import sys
 
@@ -50,7 +51,7 @@ def dump_cassette(output_path: str, public_key: str, secret_key: str, host: str)
         cassette["pages"].append(page_data)
         page += 1
 
-    with open(output_path, "w") as f:
+    with gzip.open(output_path, "wt") as f:
         json.dump(cassette, f, indent=2, ensure_ascii=False)
 
     print(f"Dumped {len(cassette['pages'])} pages, {len(cassette['prompts'])} prompts to {output_path}")

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gzip
 import json
 import logging
 import os
@@ -25,7 +26,7 @@ def langfuse_env(monkeypatch):
 
 
 def test_bootstrap_skips_if_backup_exists(isolated_backup_path, caplog):
-    with open(isolated_backup_path, "w") as f:
+    with gzip.open(isolated_backup_path, "wt") as f:
         json.dump({}, f)
 
     with (
@@ -46,7 +47,7 @@ def test_bootstrap_fetches_if_backup_missing(isolated_backup_path, langfuse_env)
         mock_fetch.assert_called_once_with("pk-test", "sk-test", "http://localhost:3030")
 
     assert os.path.exists(isolated_backup_path)
-    with open(isolated_backup_path) as f:
+    with gzip.open(isolated_backup_path, "rt") as f:
         assert json.load(f) == fake_prompts
 
 
