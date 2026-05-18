@@ -26,4 +26,4 @@ jobs:
     - run: uv pip install --upgrade "langfuse~=${{ matrix.langfuse-version }}.0"
     - run: uv run pytest tests/ -m "not integration"
       env:
-        LANGFUSE_DISABLE_BOOTSTRAP: "1"
+        LANGFUSE_DISABLE_IMPLICIT_BOOTSTRAP: "1"

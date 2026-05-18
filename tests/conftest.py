@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from unittest.mock import patch
 
-os.environ.setdefault("LANGFUSE_DISABLE_BOOTSTRAP", "1")
+os.environ.setdefault("LANGFUSE_DISABLE_IMPLICIT_BOOTSTRAP", "1")
 
 import json
 from pathlib import Path
@@ -14,12 +14,12 @@ CASSETTE_PATH = Path(__file__).parent / "resources" / "prompts_cassette.json"
 
 
 def _make_client(backup_path):
-    from langfuse_freeze.main import LangfuseBacked
+    from langfuse_freeze.main import FrozenLangfuse
 
-    client = LangfuseBacked.__new__(LangfuseBacked)
+    client = FrozenLangfuse.__new__(FrozenLangfuse)
     client.PROMPTS_BACKUP_PATH = backup_path
     with patch("langfuse_freeze.main.Langfuse.__init__", return_value=None):
-        LangfuseBacked.__init__(client)
+        FrozenLangfuse.__init__(client)
     return client
 
 

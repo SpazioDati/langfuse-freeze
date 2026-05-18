@@ -19,7 +19,7 @@ _MAX_RETRIES = int(os.environ.get("LANGFUSE_BOOTSTRAP_MAX_RETRIES", "3"))
 _RETRY_DELAY = float(os.environ.get("LANGFUSE_BOOTSTRAP_RETRY_DELAY", "2"))
 
 
-class LangfuseBacked(Langfuse):
+class FrozenLangfuse(Langfuse):
     PROMPTS_BACKUP_PATH = _PROMPTS_BACKUP_PATH
 
     def __init__(self, **kwargs):
@@ -34,8 +34,8 @@ class LangfuseBacked(Langfuse):
         except FileNotFoundError as e:
             msg = (
                 f"No prompts backup found at {self.PROMPTS_BACKUP_PATH}. "
-                + "Run LangfuseBacked.bootstrap() first or ensure the backup file exists "
-                + "by removing 'LANGFUSE_DISABLE_BOOTSTRAP' from env vars."
+                + "Run FrozenLangfuse.bootstrap() first or ensure the backup file exists "
+                + "by removing 'LANGFUSE_DISABLE_IMPLICIT_BOOTSTRAP' from env vars."
             )
 
             raise RuntimeError(msg) from e

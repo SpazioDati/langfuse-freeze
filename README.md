@@ -4,12 +4,12 @@ Wraps the Langfuse client to snapshot prompts to disk at startup. If Langfuse is
 
 ## How it works
 
-On `import langfuse_freeze`, `LangfuseBacked.bootstrap()` runs automatically:
+On `import langfuse_freeze`, `FrozenLangfuse.bootstrap()` runs automatically:
 - Backup file already exists → skip (log and continue)
 - Backup file missing → fetch all prompts from Langfuse, write to disk
 - Fetch fails → retry with exponential backoff, raise `RuntimeError` after max retries
 
-At runtime, `LangfuseBacked.get_prompt()` injects the backup as `fallback` so Langfuse SDK handles outages gracefully.
+At runtime, `FrozenLangfuse.get_prompt()` injects the backup as `fallback` so Langfuse SDK handles outages gracefully.
 
 ## Installation
 
@@ -20,9 +20,9 @@ uv add langfuse-freeze
 ## Usage
 
 ```python
-from langfuse_freeze.main import LangfuseBacked
+from langfuse_freeze.main import FrozenLangfuse
 
-client = LangfuseBacked()
+client = FrozenLangfuse()
 prompt = client.get_prompt("my-prompt", type="text", label="production")
 ```
 
@@ -74,7 +74,8 @@ Unit tests (no network):
 uv run pytest tests/ -m "not integration"
 ```
 
-Integration tests (requires Langfuse running at `http://localhost:10016`):
+Integration tests (requires Langfuse running on `http://localhost:3030`,
+reccomended to [use docker-compose](https://langfuse.com/self-hosting/deployment/docker-compose)):
 
 ```bash
 uv run pytest tests/ -m integration
