@@ -38,5 +38,6 @@ def backup_file(cassette, tmp_path):
         labels = {label: data["prompt"] for label, data in label_data.items()}
         backup[name] = {"type": first_label["type"], "labels": labels}
     path = tmp_path / "prompts.json.gz"
-    path.write_text(json.dumps(backup))
+    with gzip.open(path, "wt") as f:
+        json.dump(backup, f)
     return str(path)
