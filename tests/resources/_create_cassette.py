@@ -61,7 +61,7 @@ if __name__ == "__main__":
     import os
 
     dump_cassette(
-        output_path=sys.argv[1] if len(sys.argv) > 1 else "prompts_cassette.json",
+        output_path=sys.argv[1] if len(sys.argv) > 1 else "prompts_cassette.json.jz",
         public_key=os.environ["LANGFUSE_PUBLIC_KEY"],
         secret_key=os.environ["LANGFUSE_SECRET_KEY"],
         host=os.environ["LANGFUSE_HOST"],
