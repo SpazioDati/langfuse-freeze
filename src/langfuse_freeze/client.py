@@ -5,19 +5,34 @@ import json
 import logging
 import os
 import time
-from typing import TYPE_CHECKING, Literal, overload
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import TYPE_CHECKING, Literal, TypedDict, overload
 
 from langfuse import Langfuse
 
 if TYPE_CHECKING:
     from langfuse.api import PromptMeta
-    from langfuse.model import ChatMessageDict, ChatPromptClient, PromptClient, TextPromptClient
+    from langfuse.model import (
+        ChatMessageDict,
+        ChatMessageWithPlaceholdersDict_Message,
+        ChatMessageWithPlaceholdersDict_Placeholder,
+        ChatPromptClient,
+        PromptClient,
+        TextPromptClient,
+    )
 
 logger = logging.getLogger(__name__)
 
 _PROMPTS_BACKUP_PATH = os.environ.get("LANGFUSE_PROMPTS_BACKUP_PATH", "./langfuse-backup/prompts.json.gz")
 _MAX_RETRIES = int(os.environ.get("LANGFUSE_BOOTSTRAP_MAX_RETRIES", "3"))
 _RETRY_DELAY = float(os.environ.get("LANGFUSE_BOOTSTRAP_RETRY_DELAY", "2"))
+
+
+class _PromptEntry(TypedDict):
+    type: str
+    labels: dict[
+        str, str | list[ChatMessageWithPlaceholdersDict_Message | ChatMessageWithPlaceholdersDict_Placeholder]
+    ]
 
 
 class FrozenLangfuse(Langfuse):
@@ -124,25 +139,25 @@ class FrozenLangfuse(Langfuse):
     @classmethod
     def _fetch_all_prompts(cls, public_key: str, secret_key: str, host: str) -> dict:
         langfuse = Langfuse(public_key=public_key, secret_key=secret_key, host=host)
-        prompts_backup = {}
+        prompts_backup: dict[str, _PromptEntry] = {}
         page = 1
-
-        while True:
-            prompts_metadata = cls._load_prompt_metadata_response_page(langfuse, page)
-            if not prompts_metadata:
-                break
-
-            for prompt_meta in prompts_metadata:
-                labels = {}
-                for label in prompt_meta.labels:
-                    prompt = cls._fetch_prompt(langfuse, prompt_meta, label)
-                    labels[label] = prompt.prompt
-
-                prompts_backup[prompt_meta.name] = {
-                    "type": prompt_meta.type,
-                    "labels": labels,
-                }
-            page += 1
+        futures = []
+        with ThreadPoolExecutor() as executor:
+            while True:
+                prompts_metadata = cls._load_prompt_metadata_response_page(langfuse, page)
+                if not prompts_metadata:
+                    break
+                for prompt_meta in prompts_metadata:
+                    for label in prompt_meta.labels:
+                        futures.append(executor.submit(cls._fetch_prompt, langfuse, prompt_meta, label))
+                page += 1
+            for future in as_completed(futures):
+                prompt_meta, label, prompt = future.result()
+                prompt_data = prompts_backup.setdefault(
+                    prompt_meta.name,
+                    {"type": prompt_meta.type, "labels": {}},
+                )
+                prompt_data["labels"][label] = prompt.prompt
 
         return prompts_backup
 
@@ -151,8 +166,10 @@ class FrozenLangfuse(Langfuse):
         return langfuse.api.prompts.list(page=page).data
 
     @staticmethod
-    def _fetch_prompt(langfuse: Langfuse, prompt_meta: PromptMeta, label: str):
-        return langfuse.get_prompt(name=prompt_meta.name, label=label, type=prompt_meta.type.name)
+    def _fetch_prompt(
+        langfuse: Langfuse, prompt_meta: PromptMeta, label: str
+    ) -> tuple[PromptMeta, str, PromptClient | TextPromptClient | ChatPromptClient]:
+        return prompt_meta, label, langfuse.get_prompt(name=prompt_meta.name, label=label, type=prompt_meta.type.name)
 
     @staticmethod
     def _normalize_chat_message(msg: dict) -> dict:

@@ -5,22 +5,38 @@ import json
 import os
 
 import pytest
+from langfuse import Langfuse
 
 from langfuse_freeze import FrozenLangfuse
 
-LANGFUSE_HOST = "http://localhost:3030"
+LANGFUSE_HOST = "http://localhost:3000"
+LANGFUSE_PUBLIC_KEY = "lf_pk_1234567890"
+LANGFUSE_SECRET_KEY = "lf_sk_1234567890"
 
 
 @pytest.fixture(autouse=True)
 def langfuse_env(monkeypatch):
-    monkeypatch.setenv("LANGFUSE_PUBLIC_KEY", os.environ.get("LANGFUSE_PUBLIC_KEY", "pk-lf-1234"))
-    monkeypatch.setenv("LANGFUSE_SECRET_KEY", os.environ.get("LANGFUSE_SECRET_KEY", "sk-lf-1234"))
-    monkeypatch.setenv("LANGFUSE_HOST", LANGFUSE_HOST)
+    monkeypatch.setenv("LANGFUSE_PUBLIC_KEY", os.environ.get("LANGFUSE_PUBLIC_KEY", LANGFUSE_PUBLIC_KEY))
+    monkeypatch.setenv("LANGFUSE_SECRET_KEY", os.environ.get("LANGFUSE_SECRET_KEY", LANGFUSE_SECRET_KEY))
+    monkeypatch.setenv("LANGFUSE_HOST", LANGFUSE_HOST)  # Create a text prompt
+
+
+@pytest.fixture(scope="session", autouse=True)
+def langfuse_setup(cassette):
+    langfuse = Langfuse(public_key=LANGFUSE_PUBLIC_KEY, secret_key=LANGFUSE_SECRET_KEY, host=LANGFUSE_HOST)
+    for name, label_data in cassette["prompts"].items():
+        first_label = next(iter(label_data.values()))
+        for label, data in label_data.items():
+            if isinstance(data["prompt"], list):
+                for message in data["prompt"]:
+                    message["type"] = "chatmessage"
+            langfuse.create_prompt(name=name, type=first_label["type"], prompt=data["prompt"], labels=[label])
+    return
 
 
 @pytest.fixture
 def fresh_backup(tmp_path, monkeypatch):
-    backup_path = str(tmp_path / "prompts.json")
+    backup_path = str(tmp_path / "prompts.json.gz")
     monkeypatch.setenv("LANGFUSE_PROMPTS_BACKUP_PATH", backup_path)
     monkeypatch.setattr(FrozenLangfuse, "PROMPTS_BACKUP_PATH", backup_path)
     return backup_path

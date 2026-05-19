@@ -22,7 +22,7 @@ def isolated_backup_path(tmp_path, monkeypatch):
 def langfuse_env(monkeypatch):
     monkeypatch.setenv("LANGFUSE_PUBLIC_KEY", "pk-test")
     monkeypatch.setenv("LANGFUSE_SECRET_KEY", "sk-test")
-    monkeypatch.setenv("LANGFUSE_HOST", "http://localhost:3030")
+    monkeypatch.setenv("LANGFUSE_HOST", "http://localhost:3000")
 
 
 def test_bootstrap_skips_if_backup_exists(isolated_backup_path, caplog):
@@ -44,7 +44,7 @@ def test_bootstrap_fetches_if_backup_missing(isolated_backup_path, langfuse_env)
 
     with patch.object(FrozenLangfuse, "_fetch_all_prompts", return_value=fake_prompts) as mock_fetch:
         FrozenLangfuse.bootstrap()
-        mock_fetch.assert_called_once_with("pk-test", "sk-test", "http://localhost:3030")
+        mock_fetch.assert_called_once_with("pk-test", "sk-test", "http://localhost:3000")
 
     assert os.path.exists(isolated_backup_path)
     with gzip.open(isolated_backup_path, "rt") as f:
@@ -90,7 +90,7 @@ def test_bootstrap_raises_after_max_retries(isolated_backup_path, langfuse_env, 
 def test_bootstrap_missing_public_key_raises(isolated_backup_path, monkeypatch):
     monkeypatch.delenv("LANGFUSE_PUBLIC_KEY", raising=False)
     monkeypatch.setenv("LANGFUSE_SECRET_KEY", "sk-test")
-    monkeypatch.setenv("LANGFUSE_HOST", "http://localhost:3030")
+    monkeypatch.setenv("LANGFUSE_HOST", "http://localhost:3000")
 
     with pytest.raises(AssertionError, match="LANGFUSE_PUBLIC_KEY"):
         FrozenLangfuse.bootstrap()
