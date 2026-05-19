@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gzip
 import json
 import logging
 import os
@@ -7,13 +8,13 @@ from unittest.mock import patch
 
 import pytest
 
-from langfuse_freeze.main import LangfuseBacked
+from langfuse_freeze import FrozenLangfuse
 
 
 @pytest.fixture(autouse=True)
 def isolated_backup_path(tmp_path, monkeypatch):
     backup_path = str(tmp_path / "prompts.json")
-    monkeypatch.setattr(LangfuseBacked, "PROMPTS_BACKUP_PATH", backup_path)
+    monkeypatch.setattr(FrozenLangfuse, "PROMPTS_BACKUP_PATH", backup_path)
     return backup_path
 
 
@@ -21,18 +22,18 @@ def isolated_backup_path(tmp_path, monkeypatch):
 def langfuse_env(monkeypatch):
     monkeypatch.setenv("LANGFUSE_PUBLIC_KEY", "pk-test")
     monkeypatch.setenv("LANGFUSE_SECRET_KEY", "sk-test")
-    monkeypatch.setenv("LANGFUSE_HOST", "http://localhost:10016")
+    monkeypatch.setenv("LANGFUSE_HOST", "http://localhost:3030")
 
 
 def test_bootstrap_skips_if_backup_exists(isolated_backup_path, caplog):
-    with open(isolated_backup_path, "w") as f:
+    with gzip.open(isolated_backup_path, "wt") as f:
         json.dump({}, f)
 
     with (
-        caplog.at_level(logging.INFO, logger="langfuse_freeze.main"),
-        patch.object(LangfuseBacked, "_fetch_all_prompts") as mock_fetch,
+        caplog.at_level(logging.INFO, logger="langfuse_freeze.client"),
+        patch.object(FrozenLangfuse, "_fetch_all_prompts") as mock_fetch,
     ):
-        LangfuseBacked.bootstrap()
+        FrozenLangfuse.bootstrap()
         mock_fetch.assert_not_called()
 
     assert "skipping" in caplog.text
@@ -41,20 +42,20 @@ def test_bootstrap_skips_if_backup_exists(isolated_backup_path, caplog):
 def test_bootstrap_fetches_if_backup_missing(isolated_backup_path, langfuse_env):
     fake_prompts = {"my-prompt": {"type": "text", "labels": {"production": "hello"}}}
 
-    with patch.object(LangfuseBacked, "_fetch_all_prompts", return_value=fake_prompts) as mock_fetch:
-        LangfuseBacked.bootstrap()
-        mock_fetch.assert_called_once_with("pk-test", "sk-test", "http://localhost:10016")
+    with patch.object(FrozenLangfuse, "_fetch_all_prompts", return_value=fake_prompts) as mock_fetch:
+        FrozenLangfuse.bootstrap()
+        mock_fetch.assert_called_once_with("pk-test", "sk-test", "http://localhost:3030")
 
     assert os.path.exists(isolated_backup_path)
-    with open(isolated_backup_path) as f:
+    with gzip.open(isolated_backup_path, "rt") as f:
         assert json.load(f) == fake_prompts
 
 
 def test_bootstrap_retries_on_failure(isolated_backup_path, langfuse_env, monkeypatch):
-    import langfuse_freeze.main as main_module
+    import langfuse_freeze.client as client_module
 
-    monkeypatch.setattr(main_module, "_MAX_RETRIES", 3)
-    monkeypatch.setattr(main_module, "_RETRY_DELAY", 0)
+    monkeypatch.setattr(client_module, "_MAX_RETRIES", 3)
+    monkeypatch.setattr(client_module, "_RETRY_DELAY", 0)
 
     fake_prompts = {"p": {"type": "text", "labels": {"production": "x"}}}
     call_count = 0
@@ -66,30 +67,30 @@ def test_bootstrap_retries_on_failure(isolated_backup_path, langfuse_env, monkey
             raise ConnectionError("timeout")
         return fake_prompts
 
-    with patch.object(LangfuseBacked, "_fetch_all_prompts", side_effect=flaky_fetch):
-        LangfuseBacked.bootstrap()
+    with patch.object(FrozenLangfuse, "_fetch_all_prompts", side_effect=flaky_fetch):
+        FrozenLangfuse.bootstrap()
 
     assert call_count == 2
     assert os.path.exists(isolated_backup_path)
 
 
 def test_bootstrap_raises_after_max_retries(isolated_backup_path, langfuse_env, monkeypatch):
-    import langfuse_freeze.main as main_module
+    import langfuse_freeze.client as client_module
 
-    monkeypatch.setattr(main_module, "_MAX_RETRIES", 3)
-    monkeypatch.setattr(main_module, "_RETRY_DELAY", 0)
+    monkeypatch.setattr(client_module, "_MAX_RETRIES", 3)
+    monkeypatch.setattr(client_module, "_RETRY_DELAY", 0)
 
     with (
-        patch.object(LangfuseBacked, "_fetch_all_prompts", side_effect=ConnectionError("down")),
+        patch.object(FrozenLangfuse, "_fetch_all_prompts", side_effect=ConnectionError("down")),
         pytest.raises(RuntimeError, match="3 attempts"),
     ):
-        LangfuseBacked.bootstrap()
+        FrozenLangfuse.bootstrap()
 
 
 def test_bootstrap_missing_public_key_raises(isolated_backup_path, monkeypatch):
     monkeypatch.delenv("LANGFUSE_PUBLIC_KEY", raising=False)
     monkeypatch.setenv("LANGFUSE_SECRET_KEY", "sk-test")
-    monkeypatch.setenv("LANGFUSE_HOST", "http://localhost:10016")
+    monkeypatch.setenv("LANGFUSE_HOST", "http://localhost:3030")
 
     with pytest.raises(AssertionError, match="LANGFUSE_PUBLIC_KEY"):
-        LangfuseBacked.bootstrap()
+        FrozenLangfuse.bootstrap()

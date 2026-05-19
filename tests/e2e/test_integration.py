@@ -1,13 +1,14 @@
 from __future__ import annotations
 
+import gzip
 import json
 import os
 
 import pytest
 
-from langfuse_freeze.main import LangfuseBacked
+from langfuse_freeze import FrozenLangfuse
 
-LANGFUSE_HOST = "http://localhost:10016"
+LANGFUSE_HOST = "http://localhost:3030"
 
 
 @pytest.fixture(autouse=True)
@@ -21,15 +22,15 @@ def langfuse_env(monkeypatch):
 def fresh_backup(tmp_path, monkeypatch):
     backup_path = str(tmp_path / "prompts.json")
     monkeypatch.setenv("LANGFUSE_PROMPTS_BACKUP_PATH", backup_path)
-    monkeypatch.setattr(LangfuseBacked, "PROMPTS_BACKUP_PATH", backup_path)
+    monkeypatch.setattr(FrozenLangfuse, "PROMPTS_BACKUP_PATH", backup_path)
     return backup_path
 
 
 @pytest.mark.integration
 def test_bootstrap_fetches_and_writes_real_prompts(fresh_backup):
-    LangfuseBacked.bootstrap()
+    FrozenLangfuse.bootstrap()
     assert os.path.exists(fresh_backup)
-    with open(fresh_backup) as f:
+    with gzip.open(fresh_backup, "rt") as f:
         data = json.load(f)
 
     assert len(data) > 0
@@ -47,18 +48,18 @@ def test_bootstrap_fetches_and_writes_real_prompts(fresh_backup):
 
 @pytest.mark.integration
 def test_bootstrap_skips_existing_backup(fresh_backup):
-    LangfuseBacked.bootstrap()
+    FrozenLangfuse.bootstrap()
     mtime_first = os.path.getmtime(fresh_backup)
-    LangfuseBacked.bootstrap()
+    FrozenLangfuse.bootstrap()
     mtime_second = os.path.getmtime(fresh_backup)
     assert mtime_first == mtime_second
 
 
 @pytest.mark.integration
 def test_langfuse_backed_get_text_prompt(fresh_backup, monkeypatch):
-    LangfuseBacked.bootstrap()
+    FrozenLangfuse.bootstrap()
 
-    with open(fresh_backup) as f:
+    with gzip.open(fresh_backup, "rt") as f:
         data = json.load(f)
 
     text_prompts = {k: v for k, v in data.items() if v["type"] == "text"}
@@ -66,7 +67,7 @@ def test_langfuse_backed_get_text_prompt(fresh_backup, monkeypatch):
         pytest.skip("No text prompts found in Langfuse")
 
     prompt_name = next(iter(text_prompts))
-    client = LangfuseBacked(
+    client = FrozenLangfuse(
         public_key=os.environ["LANGFUSE_PUBLIC_KEY"],
         secret_key=os.environ["LANGFUSE_SECRET_KEY"],
         host=LANGFUSE_HOST,
@@ -79,9 +80,9 @@ def test_langfuse_backed_get_text_prompt(fresh_backup, monkeypatch):
 
 @pytest.mark.integration
 def test_langfuse_backed_get_chat_prompt(fresh_backup, monkeypatch):
-    LangfuseBacked.bootstrap()
+    FrozenLangfuse.bootstrap()
 
-    with open(fresh_backup) as f:
+    with gzip.open(fresh_backup, "rt") as f:
         data = json.load(f)
 
     chat_prompts = {k: v for k, v in data.items() if v["type"] == "chat"}
@@ -89,7 +90,7 @@ def test_langfuse_backed_get_chat_prompt(fresh_backup, monkeypatch):
         pytest.skip("No chat prompts found in Langfuse")
 
     prompt_name = next(iter(chat_prompts))
-    client = LangfuseBacked(
+    client = FrozenLangfuse(
         public_key=os.environ["LANGFUSE_PUBLIC_KEY"],
         secret_key=os.environ["LANGFUSE_SECRET_KEY"],
         host=LANGFUSE_HOST,
@@ -102,9 +103,9 @@ def test_langfuse_backed_get_chat_prompt(fresh_backup, monkeypatch):
 
 @pytest.mark.integration
 def test_fallback_used_when_langfuse_unreachable(fresh_backup):
-    LangfuseBacked.bootstrap()
+    FrozenLangfuse.bootstrap()
 
-    with open(fresh_backup) as f:
+    with gzip.open(fresh_backup, "rt") as f:
         data = json.load(f)
 
     if not data:
@@ -113,7 +114,7 @@ def test_fallback_used_when_langfuse_unreachable(fresh_backup):
     prompt_name = next(iter(data))
     prompt_type = data[prompt_name]["type"]
 
-    client = LangfuseBacked(
+    client = FrozenLangfuse(
         public_key="pk-lf-invalid",
         secret_key="sk-lf-invalid",
         host="http://localhost:19999",

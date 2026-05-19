@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gzip
 import json
 import sys
 
@@ -50,7 +51,7 @@ def dump_cassette(output_path: str, public_key: str, secret_key: str, host: str)
         cassette["pages"].append(page_data)
         page += 1
 
-    with open(output_path, "w") as f:
+    with gzip.open(output_path, "wt") as f:
         json.dump(cassette, f, indent=2, ensure_ascii=False)
 
     print(f"Dumped {len(cassette['pages'])} pages, {len(cassette['prompts'])} prompts to {output_path}")
@@ -60,7 +61,7 @@ if __name__ == "__main__":
     import os
 
     dump_cassette(
-        output_path=sys.argv[1] if len(sys.argv) > 1 else "prompts_cassette.json",
+        output_path=sys.argv[1] if len(sys.argv) > 1 else "prompts_cassette.json.jz",
         public_key=os.environ["LANGFUSE_PUBLIC_KEY"],
         secret_key=os.environ["LANGFUSE_SECRET_KEY"],
         host=os.environ["LANGFUSE_HOST"],
