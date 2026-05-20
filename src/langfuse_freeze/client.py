@@ -109,8 +109,8 @@ class FrozenLangfuse(Langfuse):
         return super().get_prompt(name, **kwargs)
 
     @classmethod
-    def bootstrap(cls) -> None:
-        if os.path.exists(cls.PROMPTS_BACKUP_PATH):
+    def bootstrap(cls, overwrite: bool = False) -> None:
+        if os.path.exists(cls.PROMPTS_BACKUP_PATH) and not overwrite:
             logger.info("Backup already present at %s, skipping", cls.PROMPTS_BACKUP_PATH)
             return
 
