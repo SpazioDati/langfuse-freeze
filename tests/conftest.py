@@ -24,7 +24,7 @@ def _make_client(backup_path):
     return client
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def cassette():
     with gzip.open(CASSETTE_PATH, "rt") as f:
         return json.load(f)

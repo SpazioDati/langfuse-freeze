@@ -74,8 +74,25 @@ Unit tests (no network):
 uv run pytest tests/ -m "not integration"
 ```
 
-Integration tests (requires Langfuse running on `http://localhost:3030`,
-reccomended to [use docker-compose](https://langfuse.com/self-hosting/deployment/docker-compose)):
+Integration tests requires Langfuse running on `http://localhost:3000`, we reccomend to [use docker-compose](https://langfuse.com/self-hosting/deployment/docker-compose).
+In order to setup the instance with docker compose, some environment variables are required, with the following values:
+
+```
+LANGFUSE_INIT_ORG_ID=my-org
+LANGFUSE_INIT_PROJECT_ID=my-project
+LANGFUSE_INIT_PROJECT_PUBLIC_KEY=lf_pk_1234567890
+LANGFUSE_INIT_PROJECT_SECRET_KEY=lf_sk_1234567890
+LANGFUSE_INIT_USER_EMAIL=user@example.com
+LANGFUSE_INIT_USER_PASSWORD=password123
+```
+
+They can be set in a `.env` file so the instance can be started with
+
+```bash
+docker compose --env-file .env up
+```
+
+Once Langfuse is running, integration tests can be run (they will write prompts on `my-project`)
 
 ```bash
 uv run pytest tests/ -m integration
