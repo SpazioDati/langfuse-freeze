@@ -1,13 +1,9 @@
 from __future__ import annotations
 
 import gzip
-import os
-from unittest.mock import patch
-
-os.environ.setdefault("LANGFUSE_DISABLE_IMPLICIT_BOOTSTRAP", "1")
-
 import json
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -17,11 +13,8 @@ CASSETTE_PATH = Path(__file__).parent / "resources" / "prompts_cassette.json.gz"
 def _make_client(backup_path):
     from langfuse_freeze import FrozenLangfuse
 
-    client = FrozenLangfuse.__new__(FrozenLangfuse)
-    client.PROMPTS_BACKUP_PATH = backup_path
     with patch("langfuse_freeze.client.Langfuse.__init__", return_value=None):
-        FrozenLangfuse.__init__(client)
-    return client
+        return FrozenLangfuse(prompts_backup_path=backup_path)
 
 
 @pytest.fixture(scope="session")

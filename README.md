@@ -1,11 +1,13 @@
 # langfuse-freeze
 
-Wraps the Langfuse client to snapshot prompts to disk at startup. If Langfuse is unreachable at runtime, the local backup is used as fallback.
+Wraps the Langfuse client to snapshot prompts to disk at startup. If Langfuse is unreachable at runtime,
+the local backup is used as fallback.
 
 ## How it works
 
-On `import langfuse_freeze`, `FrozenLangfuse.bootstrap()` runs automatically:
-- Backup file already exists → skip (log and continue)
+`FrozenLangfuse(prompts_backup_path=<path>).bootstrap()` creates a Langfuse client (init parameters are equivalent to
+the client in official SDK) and runs the backup process:
+- Backup file already exists → skip if `overwrite` argument is false (log and continue)
 - Backup file missing → fetch all prompts from Langfuse, write to disk
 - Fetch fails → retry with exponential backoff, raise `RuntimeError` after max retries
 
@@ -22,7 +24,8 @@ uv add langfuse-freeze
 ```python
 from langfuse_freeze import FrozenLangfuse
 
-client = FrozenLangfuse()
+client = FrozenLangfuse(prompts_backup_path='./langfuse_backup/prompts.json.gz')
+client.bootstrap()
 prompt = client.get_prompt("my-prompt", type="text", label="production")
 ```
 
@@ -33,22 +36,10 @@ Drop-in replacement for `Langfuse`. Same API.
 Run before the app starts (e.g. in a Dockerfile or k8s init container):
 
 ```bash
-langfuse-freeze-bootstrap
+langfuse-freeze-bootstrap ./langfuse_backup/prompts.json.gz
 ```
 
 Same logic as import-time bootstrap — skips if backup already present.
-
-## Configuration
-
-| Env var | Default                             | Description |
-|---|-------------------------------------|---|
-| `LANGFUSE_PUBLIC_KEY` | —                                   | Required |
-| `LANGFUSE_SECRET_KEY` | —                                   | Required |
-| `LANGFUSE_HOST` | —                                   | Required |
-| `LANGFUSE_PROMPTS_BACKUP_PATH` | `./langfuse-backup/prompts.json.gz` | Backup file location |
-| `LANGFUSE_BOOTSTRAP_MAX_RETRIES` | `3`                                 | Fetch attempts before crash |
-| `LANGFUSE_BOOTSTRAP_RETRY_DELAY` | `2`                                 | Base seconds for exponential backoff |
-| `LANGFUSE_DISABLE_IMPLICIT_BOOTSTRAP` | —                                   | Set to `1` to skip import-time bootstrap |
 
 ## Backup format
 

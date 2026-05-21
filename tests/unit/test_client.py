@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import gzip
+import logging
 from unittest.mock import patch
 
 import pytest
@@ -7,9 +9,29 @@ import pytest
 from tests.conftest import _make_client
 
 
-def test_init_handles_missing_backup(tmp_path):
-    with pytest.raises(RuntimeError):
-        _make_client(str(tmp_path / "nonexistent.json"))
+def test_init_handles_missing_backup(tmp_path, caplog):
+    with caplog.at_level(logging.WARNING, logger="langfuse_freeze.client"):
+        client = _make_client(str(tmp_path / "nonexistent.json.gz"))
+    assert "No prompts backup found" in caplog.text
+    assert client._prompts_backup == {}
+
+
+def test_init_raises_on_invalid_json(tmp_path):
+    path = tmp_path / "invalid.json.gz"
+    with gzip.open(path, "wt") as f:
+        f.write("not json at all{{{")
+
+    with pytest.raises(RuntimeError, match="invalid JSON"):
+        _make_client(str(path))
+
+
+def test_init_raises_on_generic_error(tmp_path):
+    path = tmp_path / "bad.json.gz"
+    # Write non-gzip data so gzip.open fails with a generic error
+    path.write_bytes(b"not gzip data")
+
+    with pytest.raises(RuntimeError, match="Failed to load prompts backup"):
+        _make_client(str(path))
 
 
 def test_get_prompt_injects_text_fallback_production(backup_file):
@@ -31,7 +53,7 @@ def test_get_prompt_injects_text_fallback_specific_label(backup_file):
         client.get_prompt("sentovel-entities-select", type="text", label="dev")
         _, kwargs = mock_super.call_args
         assert kwargs["fallback"].startswith(
-            "Sei un esperto di economia italiana e di ecosistemi dati aziendali. Oggi è {{today}}."
+            "Sei un esperto di economia italiana e di ecosistemi dati aziendali. Oggi \u00e8 {{today}}."
         )
 
 
@@ -53,8 +75,8 @@ def test_get_prompt_injects_chat_fallback_specific_label(backup_file):
         client.get_prompt("sentovel-rag-select-text", type="text", label="dev")
         _, kwargs = mock_super.call_args
 
-        assert kwargs["fallback"].startswith("Sei un esperto di economia italiana e oggi è {{today}}.")
-        assert "## Passo 3 — Cerca corrispondenze per OGNI concetto" not in kwargs["fallback"]
+        assert kwargs["fallback"].startswith("Sei un esperto di economia italiana e oggi \u00e8 {{today}}.")
+        assert "## Passo 3 \u2014 Cerca corrispondenze per OGNI concetto" not in kwargs["fallback"]
 
 
 def test_get_prompt_falls_back_to_production_for_unknown_label(backup_file):
@@ -64,7 +86,7 @@ def test_get_prompt_falls_back_to_production_for_unknown_label(backup_file):
         client.get_prompt("sentovel-rag-select-text", type="text", label="nonexistent")
         _, kwargs = mock_super.call_args
         assert kwargs["fallback"].startswith(
-            "Sei un esperto di economia italiana e di ecosistemi dati aziendali. Oggi è {{today}}."
+            "Sei un esperto di economia italiana e di ecosistemi dati aziendali. Oggi \u00e8 {{today}}."
         )
 
 

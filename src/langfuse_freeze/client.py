@@ -23,10 +23,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_PROMPTS_BACKUP_PATH = os.environ.get("LANGFUSE_PROMPTS_BACKUP_PATH", "./langfuse-backup/prompts.json.gz")
-_MAX_RETRIES = int(os.environ.get("LANGFUSE_BOOTSTRAP_MAX_RETRIES", "3"))
-_RETRY_DELAY = float(os.environ.get("LANGFUSE_BOOTSTRAP_RETRY_DELAY", "2"))
-
 
 class _PromptEntry(TypedDict):
     type: str
@@ -36,31 +32,27 @@ class _PromptEntry(TypedDict):
 
 
 class FrozenLangfuse(Langfuse):
-    PROMPTS_BACKUP_PATH = _PROMPTS_BACKUP_PATH
-
-    def __init__(self, **kwargs):
+    def __init__(self, *, prompts_backup_path: str, **kwargs):
         super().__init__(**kwargs)
+        self._prompts_backup_path = prompts_backup_path
         self._prompts_backup: dict = {}
         try:
-            with gzip.open(self.PROMPTS_BACKUP_PATH, "rt") as f:
+            with gzip.open(prompts_backup_path, "rt") as f:
                 prompts_backup = json.load(f)
             self._prompts_backup = self._normalize_backup(prompts_backup)
             logger.info("Loaded %d prompts from backup", len(self._prompts_backup))
 
-        except FileNotFoundError as e:
-            msg = (
-                f"No prompts backup found at {self.PROMPTS_BACKUP_PATH}. "
-                + "Run FrozenLangfuse.bootstrap() first or ensure the backup file exists "
-                + "by removing 'LANGFUSE_DISABLE_IMPLICIT_BOOTSTRAP' from env vars."
+        except FileNotFoundError:
+            logger.warning(
+                "No prompts backup found at %s. Run .bootstrap() to create it.",
+                prompts_backup_path,
             )
 
-            raise RuntimeError(msg) from e
-
         except json.JSONDecodeError as e:
-            raise RuntimeError(f"Prompts backup at {self.PROMPTS_BACKUP_PATH} contains invalid JSON: {e}") from e
+            raise RuntimeError(f"Prompts backup at {prompts_backup_path} contains invalid JSON: {e}") from e
 
         except Exception as e:
-            raise RuntimeError(f"Failed to load prompts backup from {self.PROMPTS_BACKUP_PATH}: {e}") from e
+            raise RuntimeError(f"Failed to load prompts backup from {prompts_backup_path}: {e}") from e
 
     def _get_fallback(self, name: str, label: str | None):
         entry = self._prompts_backup.get(name)
@@ -108,48 +100,38 @@ class FrozenLangfuse(Langfuse):
 
         return super().get_prompt(name, **kwargs)
 
-    @classmethod
-    def bootstrap(cls, overwrite: bool = False) -> None:
-        if os.path.exists(cls.PROMPTS_BACKUP_PATH) and not overwrite:
-            logger.info("Backup already present at %s, skipping", cls.PROMPTS_BACKUP_PATH)
+    def bootstrap(self, overwrite: bool = False, max_retries: int = 3, retry_delay: int = 2) -> None:
+        if os.path.exists(self._prompts_backup_path) and not overwrite:
+            logger.info("Backup already present at %s, skipping", self._prompts_backup_path)
             return
 
-        public_key = os.environ.get("LANGFUSE_PUBLIC_KEY")
-        secret_key = os.environ.get("LANGFUSE_SECRET_KEY")
-        host = os.environ.get("LANGFUSE_HOST")
-
-        assert public_key, "MISSING `LANGFUSE_PUBLIC_KEY` in env"
-        assert secret_key, "MISSING `LANGFUSE_SECRET_KEY` in env"
-        assert host, "MISSING `LANGFUSE_HOST` in env"
-
-        for attempt in range(_MAX_RETRIES):
+        for attempt in range(max_retries):
             try:
-                prompts = cls._fetch_all_prompts(public_key, secret_key, host)
+                prompts = self._fetch_all_prompts()
             except Exception as exc:
-                logger.warning("Fetch attempt %d/%d failed: %s", attempt + 1, _MAX_RETRIES, exc)
-                if attempt < _MAX_RETRIES - 1:
-                    time.sleep(_RETRY_DELAY * (2**attempt))
+                logger.warning("Fetch attempt %d/%d failed: %s", attempt + 1, max_retries, exc)
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay * (2**attempt))
             else:
-                cls._write_backup(prompts)
-                logger.info("Saved %d prompts to %s", len(prompts), cls.PROMPTS_BACKUP_PATH)
+                self._prompts_backup = prompts
+                self._write_backup(prompts, self._prompts_backup_path)
+                logger.info("Saved %d prompts to %s", len(prompts), self._prompts_backup_path)
                 return
 
-        raise RuntimeError(f"Failed to fetch prompts from Langfuse after {_MAX_RETRIES} attempts")
+        raise RuntimeError(f"Failed to fetch prompts from Langfuse after {max_retries} attempts")
 
-    @classmethod
-    def _fetch_all_prompts(cls, public_key: str, secret_key: str, host: str) -> dict:
-        langfuse = Langfuse(public_key=public_key, secret_key=secret_key, host=host)
+    def _fetch_all_prompts(self) -> dict:
         prompts_backup: dict[str, _PromptEntry] = {}
         page = 1
         futures = []
         with ThreadPoolExecutor() as executor:
             while True:
-                prompts_metadata = cls._load_prompt_metadata_response_page(langfuse, page)
+                prompts_metadata = self._load_prompt_metadata_response_page(page)
                 if not prompts_metadata:
                     break
                 for prompt_meta in prompts_metadata:
                     for label in prompt_meta.labels:
-                        futures.append(executor.submit(cls._fetch_prompt, langfuse, prompt_meta, label))
+                        futures.append(executor.submit(self._fetch_prompt, prompt_meta, label))
                 page += 1
             for future in as_completed(futures):
                 prompt_meta, label, prompt = future.result()
@@ -161,15 +143,13 @@ class FrozenLangfuse(Langfuse):
 
         return prompts_backup
 
-    @staticmethod
-    def _load_prompt_metadata_response_page(langfuse: Langfuse, page: int) -> list[PromptMeta]:
-        return langfuse.api.prompts.list(page=page).data
+    def _load_prompt_metadata_response_page(self, page: int) -> list[PromptMeta]:
+        return self.api.prompts.list(page=page).data
 
-    @staticmethod
     def _fetch_prompt(
-        langfuse: Langfuse, prompt_meta: PromptMeta, label: str
+        self, prompt_meta: PromptMeta, label: str
     ) -> tuple[PromptMeta, str, PromptClient | TextPromptClient | ChatPromptClient]:
-        return prompt_meta, label, langfuse.get_prompt(name=prompt_meta.name, label=label, type=prompt_meta.type.name)
+        return prompt_meta, label, self.get_prompt(name=prompt_meta.name, label=label, type=prompt_meta.type.value)
 
     @staticmethod
     def _normalize_chat_message(msg: dict) -> dict:
@@ -197,7 +177,7 @@ class FrozenLangfuse(Langfuse):
         return backup
 
     @classmethod
-    def _write_backup(cls, prompts: dict) -> None:
-        os.makedirs(os.path.dirname(os.path.abspath(cls.PROMPTS_BACKUP_PATH)), exist_ok=True)
-        with gzip.open(cls.PROMPTS_BACKUP_PATH, "wt") as f:
+    def _write_backup(cls, prompts: dict, path: str) -> None:
+        os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+        with gzip.open(path, "wt") as f:
             json.dump(prompts, f, indent=2)
