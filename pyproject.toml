@@ -1,6 +1,6 @@
 [project]
 name = "langfuse-freeze"
-version = "0.1.2"
+version = "0.2.0"
 description = "Freeze Langfuse prompts into static artifacts for offline production deployments"
 authors = [
     {name = "Giacomo Berardi", email = "berardi@spaziodati.eu"},
