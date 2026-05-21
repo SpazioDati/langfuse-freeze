@@ -13,7 +13,7 @@ from langfuse_freeze import FrozenLangfuse
 
 @pytest.fixture(autouse=True)
 def isolated_backup_path(tmp_path, monkeypatch):
-    backup_path = str(tmp_path / "prompts.json")
+    backup_path = str(tmp_path / "prompts.json.gz")
     monkeypatch.setattr(FrozenLangfuse, "PROMPTS_BACKUP_PATH", backup_path)
     return backup_path
 
