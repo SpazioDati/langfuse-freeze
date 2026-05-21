@@ -113,6 +113,7 @@ class FrozenLangfuse(Langfuse):
                 if attempt < max_retries - 1:
                     time.sleep(retry_delay * (2**attempt))
             else:
+                self._prompts_backup = prompts
                 self._write_backup(prompts, self._prompts_backup_path)
                 logger.info("Saved %d prompts to %s", len(prompts), self._prompts_backup_path)
                 return
